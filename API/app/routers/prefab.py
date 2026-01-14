@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import List
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.encoders import jsonable_encoder
 
 # Databases
@@ -10,10 +10,13 @@ from app.core.database import mongo_db
 # Custom Data
 from app.models.prefab import Prefab, PrefabUpdate, UserCreatedPrefab
 
+# Auth
+from app.dependencies import get_current_user_id
+
 router = APIRouter(prefix="/prefabs", tags=["Prefabs"])
 
 @router.post("/")
-async def create_prefab(payload: UserCreatedPrefab):
+async def create_prefab(payload: UserCreatedPrefab, user_id: str = Depends(get_current_user_id)):
 
     cleaned_payload = Prefab(**payload.model_dump())
     
@@ -59,7 +62,7 @@ async def get_prefab(prefab_id: str):
     return Prefab(**doc)
 
 @router.patch("/{prefab_id}", response_model=Prefab)
-async def update_prefab(prefab_id: str, payload: PrefabUpdate):
+async def update_prefab(prefab_id: str, payload: PrefabUpdate, user_id: str = Depends(get_current_user_id)):
     if not ObjectId.is_valid(prefab_id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -95,7 +98,7 @@ async def update_prefab(prefab_id: str, payload: PrefabUpdate):
     return Prefab(**result)
 
 @router.delete("/{prefab_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_prefab(prefab_id: str):
+async def delete_prefab(prefab_id: str, user_id: str = Depends(get_current_user_id)):
     if not ObjectId.is_valid(prefab_id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

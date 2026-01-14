@@ -18,23 +18,6 @@ from app.core.config import (
     REDIS_URL,
 )
 
-# ---- Runtime validation to satisfy type narrowing ----
-
-if MONGO_URI is None:
-    raise RuntimeError("MONGO_URI is not set")
-
-if NEO4J_URI is None:
-    raise RuntimeError("NEO4J_URI is not set")
-
-if NEO4J_USER is None or NEO4J_PASSWORD is None:
-    raise RuntimeError("NEO4J credentials are not set")
-
-if OPENSEARCH_HOST is None:
-    raise RuntimeError("OPENSEARCH_HOST is not set")
-
-if REDIS_URL is None:
-    raise RuntimeError("REDIS_URL is not set")
-
 # ---- MongoDB ----
 mongo_client: AsyncIOMotorClient[dict[str, Any]] = AsyncIOMotorClient(
     MONGO_URI
