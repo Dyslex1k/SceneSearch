@@ -114,6 +114,8 @@ class PrefabUpdate(BaseModel):
 class Prefab(UserCreatedPrefab):
     id: Optional[PyObjectId] = Field(alias="_id", default=None) #Converted as Pydantic does not support ObjectID
 
+    creator_id: PyObjectId = Field(...)
+
     created_at: datetime = Field(default=datetime.now(timezone.utc))
     updated_at: Optional[datetime] = Field(default=None)
     

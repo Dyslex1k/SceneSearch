@@ -18,7 +18,10 @@ router = APIRouter(prefix="/prefabs", tags=["Prefabs"])
 @router.post("/")
 async def create_prefab(payload: UserCreatedPrefab, user_id: str = Depends(get_current_user_id)):
 
-    cleaned_payload = Prefab(**payload.model_dump())
+    cleaned_payload = Prefab(
+        **payload.model_dump(),
+        creator_id=(user_id)
+    )
     
     result = await mongo_db.prefabs.insert_one(
         cleaned_payload.model_dump(
@@ -69,10 +72,7 @@ async def update_prefab(prefab_id: str, payload: PrefabUpdate, user_id: str = De
             detail="Invalid prefab id"
         )
     
-    update_data = payload.model_dump(
-        exclude_unset=True
-    )
-
+    update_data = payload.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -80,11 +80,11 @@ async def update_prefab(prefab_id: str, payload: PrefabUpdate, user_id: str = De
         )
 
     update_data["updated_at"] = datetime.now(timezone.utc)
-
     update_doc = jsonable_encoder(update_data)
 
+    # Restrict update to creator only
     result = await mongo_db.prefabs.find_one_and_update(
-        {"_id": ObjectId(prefab_id)},
+        {"_id": ObjectId(prefab_id), "creator_id": user_id},
         {"$set": update_doc},
         return_document=True
     )
@@ -92,7 +92,7 @@ async def update_prefab(prefab_id: str, payload: PrefabUpdate, user_id: str = De
     if result is None: # type: ignore
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Prefab not found"
+            detail="Prefab not found or you're not the creator"
         )
 
     return Prefab(**result)
@@ -105,14 +105,15 @@ async def delete_prefab(prefab_id: str, user_id: str = Depends(get_current_user_
             detail="Invalid prefab id"
         )
 
+    # Restrict deletion to creator only
     result = await mongo_db.prefabs.delete_one(
-        {"_id": ObjectId(prefab_id)}
+        {"_id": ObjectId(prefab_id), "creator_id": user_id}
     )
 
     if result.deleted_count == 0:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Prefab not found"
+            detail="Prefab not found or you're not the creator"
         )
     
     return None
