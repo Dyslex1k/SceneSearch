@@ -8,10 +8,14 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - mongodb
-      - neo4j
-      - opensearch
-      - redis
+      mongodb:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       - MONGO_URI=mongodb://mongodb:27017/prefabs
       - NEO4J_URI=bolt://neo4j:7687
@@ -27,6 +31,11 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   neo4j:
     image: neo4j:5
@@ -38,6 +47,11 @@ services:
       - NEO4J_AUTH=neo4j/devpassword
     volumes:
       - neo4j_data:/data
+    healthcheck:
+      test: ["CMD", "bash", "-c", "cypher-shell -u neo4j -p devpassword 'RETURN 1'"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
 
   opensearch:
     image: opensearchproject/opensearch:2.11.0
@@ -50,12 +64,22 @@ services:
       - "9200:9200"
     volumes:
       - search_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
 
   redis:
     image: redis:7
     container_name: prefab_redis
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 volumes:
   mongo_data:

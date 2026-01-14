@@ -5,7 +5,7 @@ from motor.motor_asyncio import (
     AsyncIOMotorDatabase,
 )
 from neo4j import AsyncDriver, AsyncGraphDatabase
-from opensearchpy import OpenSearch
+from opensearchpy import AsyncOpenSearch
 import redis.asyncio as redis
 from redis.asyncio import Redis
 
@@ -29,6 +29,9 @@ if NEO4J_URI is None:
 if NEO4J_USER is None or NEO4J_PASSWORD is None:
     raise RuntimeError("NEO4J credentials are not set")
 
+if OPENSEARCH_HOST is None:
+    raise RuntimeError("OPENSEARCH_HOST is not set")
+
 if REDIS_URL is None:
     raise RuntimeError("REDIS_URL is not set")
 
@@ -48,7 +51,10 @@ neo4j_driver: AsyncDriver = AsyncGraphDatabase.driver( # type: ignore
 )
 
 # ---- OpenSearch ----
-opensearch: OpenSearch = OpenSearch(OPENSEARCH_HOST)
+opensearch = AsyncOpenSearch(
+    OPENSEARCH_HOST,
+    http_compress=True,
+)
 
 # ---- Redis ----
 redis_client: Redis = redis.from_url(REDIS_URL) # type: ignore

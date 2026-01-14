@@ -2,7 +2,7 @@ fastapi
 uvicorn[standard]
 motor
 neo4j
-opensearch-py
+opensearch-py[async]
 redis
 pydantic
 python-jose

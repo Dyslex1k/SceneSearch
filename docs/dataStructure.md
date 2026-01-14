@@ -9,9 +9,7 @@
     "name": "Name of Prefab",
     "description": "Short Description of the prefab",
 
-    "content": {
-        "en": "Markdown of the content of the page in english"
-    }
+    "content": "Markdown of the content of the page in english",
 
     "creator_id": "ObjectID of USER",
 
