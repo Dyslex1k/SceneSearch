@@ -1,11 +1,11 @@
 from datetime import datetime, timezone
-from typing import List
+from typing import Any, List
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.encoders import jsonable_encoder
 
 # Databases
-from app.core.database import mongo_db
+from app.core.database import mongo_db, opensearch
 
 # Custom Data
 from app.models.prefab import Prefab, PrefabUpdate, UserCreatedPrefab
@@ -13,16 +13,22 @@ from app.models.prefab import Prefab, PrefabUpdate, UserCreatedPrefab
 # Auth
 from app.dependencies import get_current_user_id
 
+# Fucntions
+from app.services.openSearch import prefab_to_search_doc
+
+
 router = APIRouter(prefix="/prefabs", tags=["Prefabs"])
 
 @router.post("/")
-async def create_prefab(payload: UserCreatedPrefab, user_id: str = Depends(get_current_user_id)):
-
+async def create_prefab(
+    payload: UserCreatedPrefab,
+    user_id: str = Depends(get_current_user_id)
+):
     cleaned_payload = Prefab(
         **payload.model_dump(),
-        creator_id=(user_id)
+        creator_id=user_id
     )
-    
+
     result = await mongo_db.prefabs.insert_one(
         cleaned_payload.model_dump(
             by_alias=True,
@@ -31,7 +37,85 @@ async def create_prefab(payload: UserCreatedPrefab, user_id: str = Depends(get_c
         )
     )
 
-    return {"id": str(result.inserted_id)}
+    prefab_id = result.inserted_id
+    cleaned_payload.id = prefab_id
+
+    # fetch creator username
+    user_doc = await mongo_db.users.find_one({"_id": ObjectId(user_id)})
+    creator_username = user_doc["username"] # type: ignore
+
+    search_doc = await prefab_to_search_doc(cleaned_payload, creator_username) # type: ignore
+
+    # index into OpenSearch
+    await opensearch.index(
+        index="prefabs_v1",
+        id=str(prefab_id),
+        body=search_doc
+    )
+
+    return {"id": str(prefab_id)}
+
+@router.get("/search")
+async def search_prefabs(
+    q: str = Query(..., min_length=1),
+    use_cases: List[str] | None = Query(None),
+    categories: List[str] | None = Query(None),
+    is_free: bool | None = None,
+    licence_type: str | None = None,
+    limit: int = 20,
+    offset: int = 0
+) -> dict[str, Any]:
+    filters = []
+
+    if use_cases:
+        filters.append({"terms": {"use_cases": use_cases}}) # type: ignore
+
+    if categories:
+        filters.append({"terms": {"categories": categories}}) # type: ignore
+
+    if is_free is not None:
+        filters.append({"term": {"is_free": is_free}}) # type: ignore
+
+    if licence_type:
+        filters.append({"term": {"licence_type": licence_type}}) # type: ignore
+
+    query_body = { # type: ignore
+        "from": offset,
+        "size": limit,
+        "query": {
+            "bool": {
+                "must": [
+                    {
+                        "multi_match": {
+                            "query": q,
+                            "fields": [
+                                "name^4",
+                                "description^2",
+                                "content",
+                                "creator.username^3"
+                            ]
+                        }
+                    }
+                ],
+                "filter": filters
+            }
+        }
+    }
+
+    response = await opensearch.search(
+        index="prefabs_v1",
+        body=query_body # type: ignore
+    )
+
+    results = [
+        hit["_source"] | {"_score": hit["_score"]}
+        for hit in response["hits"]["hits"]
+    ]
+
+    return {
+        "total": response["hits"]["total"]["value"],
+        "results": results
+    }
 
 @router.get("/", response_model=List[Prefab])
 async def get_all_prefabs():
@@ -94,6 +178,15 @@ async def update_prefab(prefab_id: str, payload: PrefabUpdate, user_id: str = De
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Prefab not found or you're not the creator"
         )
+    
+    # after result is returned
+    user_doc = await mongo_db.users.find_one({"_id": ObjectId(user_id)})
+
+    await opensearch.index(
+        index="prefabs_v1",
+        id=str(prefab_id),
+        body=prefab_to_search_doc(Prefab(**result), user_doc["username"]) # type: ignore
+    )
 
     return Prefab(**result)
 
@@ -116,4 +209,11 @@ async def delete_prefab(prefab_id: str, user_id: str = Depends(get_current_user_
             detail="Prefab not found or you're not the creator"
         )
     
+    await opensearch.delete(
+        index="prefabs_v1",
+        id=prefab_id
+    )
+    
     return None
+
+

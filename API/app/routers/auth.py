@@ -102,6 +102,7 @@ async def discord_callback(code: str) -> dict[str, Any]:
     # Create JWT
     payload: dict[str, Any] = {
         "sub": user.id,
+        "username": user.username,
         "discord_id": user.discord_id,
         "exp": int(time.time()) + 60 * 60 * 24,
     }

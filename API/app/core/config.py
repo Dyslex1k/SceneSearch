@@ -14,6 +14,9 @@ NEO4J_PASSWORD = require_env("NEO4J_PASSWORD")
 OPENSEARCH_HOST = require_env("OPENSEARCH_HOST")
 REDIS_URL = require_env("REDIS_URL")
 
+# Index
+PREFABS_INDEX = "prefabs_v1"
+
 # External Services
 DISCORD_CLIENT_ID = require_env("DISCORD_CLIENT_ID")
 DISCORD_CLIENT_SECRET = require_env("DISCORD_CLIENT_SECRET")

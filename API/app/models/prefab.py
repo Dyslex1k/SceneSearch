@@ -70,6 +70,7 @@ class UserCreatedPrefab(BaseModel):
     external_links: List[ExternalLink] = Field(...)
 
     licence_type: Licencing = Field(...)
+    is_free: bool = Field(...)
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -91,7 +92,8 @@ class UserCreatedPrefab(BaseModel):
                         "url": "https://github.com/Dyslex1k/VRC-Skeletal-Hands"
                     }  
                 ],
-                "licence_type": "Open Source"
+                "licence_type": "Open Source",
+                "is_free": True
             }
         },
     )
@@ -152,9 +154,10 @@ class Prefab(UserCreatedPrefab):
                         "url": "https://github.com/Dyslex1k/VRC-Skeletal-Hands"
                     }  
                 ],
+                "licence_type": "Open Source",
+                "is_free": True,
                 "created_at": "2026-01-15 14:39:59.320564",
                 "updated_at": None
-
             }
         },
     )
