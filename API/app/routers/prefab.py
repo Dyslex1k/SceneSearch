@@ -8,7 +8,10 @@ from fastapi.encoders import jsonable_encoder
 from app.core.database import mongo_db, opensearch
 
 # Custom Data
-from app.models.prefab import Prefab, PrefabUpdate, UserCreatedPrefab
+from app.models.prefab import(
+    Prefab, PrefabUpdate, UserCreatedPrefab,
+    UseCase, Licencing, Categories
+)
 
 # Auth
 from app.dependencies import get_current_user_id
@@ -58,26 +61,26 @@ async def create_prefab(
 @router.get("/search")
 async def search_prefabs(
     q: str = Query(..., min_length=1),
-    use_cases: List[str] | None = Query(None),
-    categories: List[str] | None = Query(None),
+    use_cases: List[UseCase] | None = Query(None),
+    categories: List[Categories] | None = Query(None),
     is_free: bool | None = None,
-    licence_type: str | None = None,
+    licence_type: Licencing | None = None,
     limit: int = 20,
     offset: int = 0
 ) -> dict[str, Any]:
     filters = []
 
     if use_cases:
-        filters.append({"terms": {"use_cases": use_cases}}) # type: ignore
+        filters.append({"terms": {"use_cases.keyword": [uc.value for uc in use_cases]}}) # type: ignore
 
     if categories:
-        filters.append({"terms": {"categories": categories}}) # type: ignore
+        filters.append({"terms": {"categories.keyword": [cat.value for cat in categories]}}) # type: ignore
 
     if is_free is not None:
         filters.append({"term": {"is_free": is_free}}) # type: ignore
 
     if licence_type:
-        filters.append({"term": {"licence_type": licence_type}}) # type: ignore
+        filters.append({"term": {"licence_type.keyword": licence_type.value}}) # type: ignore
 
     query_body = { # type: ignore
         "from": offset,
@@ -107,8 +110,8 @@ async def search_prefabs(
         body=query_body # type: ignore
     )
 
-    results = [
-        hit["_source"] | {"_score": hit["_score"]}
+    results = [ # type: ignore
+        {"_id": hit["_id"], **hit["_source"], "_score": hit["_score"]}
         for hit in response["hits"]["hits"]
     ]
 

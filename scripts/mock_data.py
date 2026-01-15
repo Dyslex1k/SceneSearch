@@ -1,51 +1,80 @@
-from typing import Any
+import random
 import requests
 from faker import Faker
-import random
+from enum import Enum
 
-# Initialize Faker
-faker = Faker()
+fake = Faker()
 
-# Your API endpoint for prefabs
-API_URL = "http://localhost:8000/prefabs"  # <- replace with your real endpoint
+# ---------- Your enums (simplified for random generation) ----------
+class UseCase(str, Enum):
+    WORLDS = "Worlds"
+    AVATARS = "Avatars"
+    OSC = "Osc"
 
-# VRChat-specific options
-use_case_options = ["Worlds", "Avatars"]
-category_options = ["Udon", "PhysBones", "Animators", "Audio", "Shaders", "Props"]
+class Categories(str, Enum):
+    MODELS_3D = "3D Models"
+    ANIMATION = "Animations"
+    MATERIALS = "Materials"
+    AUDIO = "Audio"
+    VFX = "Visual Effects"
+    PARTICLES = "Particles"
+    TOOLING = "Tooling"
+    LIGHTING = "Lighting"
+    UI = "UI"
+    UDON = "Udon"
+    SHADERS = "Shaders"
 
-def generate_prefab() -> dict[str, Any]:
-    """Generates a fake VRChat prefab JSON object"""
-    prefab: dict[str, Any] = {
-        "name": faker.unique.word().capitalize() + "Prefab",
-        "description": faker.sentence(),
-        "content": faker.text(max_nb_chars=200),
-        "use_cases": random.sample(use_case_options, k=1),  # pick 1
-        "categories": random.sample(category_options, k=random.randint(1, 2)),
-        "tags": [faker.word() for _ in range(random.randint(2, 5))],
-        "external_links": [
-            {
-                "type": "documentation",
-                "url": faker.url()
-            }
-        ]
-    }
-    return prefab
+class LinkType(str, Enum):
+    GUMROAD = "Gumroad"
+    BOOTH = "Booth"
+    JINXY = "Jinxy"
+    GITHUB = "Github"
+    GITLAB = "Gitlab"
 
-def post_prefab(prefab: dict[str, Any]):
-    """Posts a prefab to the API"""
-    headers = {
-        "Content-Type": "application/json",
-    }
-    response = requests.post(API_URL, json=prefab, headers=headers)
-    if response.status_code == 201:
-        print(f"Prefab '{prefab['name']}' posted successfully!")
+class Licencing(str, Enum):
+    OPENSOURCE = "Open Source"
+    PROPRIETARY = "Proprietary"
+    CUSTOM = "Custom"
+
+# ---------- Config ----------
+API_URL = "http://localhost:8000/prefabs/"
+AUTH_TOKEN = ""
+NUM_PREFABS = 500  # how many fake prefabs to create
+
+# ---------- Helper functions ----------
+def random_external_links(): # type: ignore
+    num_links = random.randint(1, 2)
+    links = []
+    for _ in range(num_links):
+        links.append({ # type: ignore
+            "type": random.choice(list(LinkType)),
+            "url": fake.url()
+        })
+    return links # type: ignore
+
+def random_prefab_data(): # type: ignore
+    return {
+        "name": fake.sentence(nb_words=3).rstrip('.'),
+        "description": fake.text(max_nb_chars=200),
+        "content": fake.text(max_nb_chars=500),
+        "use_cases": random.sample([uc.value for uc in UseCase], k=random.randint(1, 2)),
+        "categories": random.sample([cat.value for cat in Categories], k=random.randint(1, 2)),
+        "external_links": random_external_links(),
+        "licence_type": random.choice([lic.value for lic in Licencing]),
+        "is_free": random.choice([True, False])
+    } # type: ignore
+
+# ---------- Create prefabs ----------
+headers = {
+    "accept": "application/json",
+    "Authorization": AUTH_TOKEN,
+    "Content-Type": "application/json"
+}
+
+for _ in range(NUM_PREFABS):
+    data = random_prefab_data() # type: ignore
+    response = requests.post(API_URL, headers=headers, json=data) # type: ignore
+    if response.status_code == 200 or response.status_code == 201:
+        print(f"Created prefab: {data['name']}")
     else:
-        print(f"Failed to post '{prefab['name']}': {response.status_code}, {response.text}")
-
-def main():
-    for _ in range(20):
-        prefab = generate_prefab()
-        post_prefab(prefab)
-
-if __name__ == "__main__":
-    main()
+        print(f"Failed to create prefab: {response.status_code} {response.text}")

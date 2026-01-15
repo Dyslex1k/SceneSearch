@@ -43,7 +43,7 @@ class LinkType(str, Enum):
     GITLAB = "Gitlab"
 
 class Licencing(str, Enum):
-    OPENSOURCE = "Open Source",
+    OPENSOURCE = "Open Source"
     PROPRIETARY = "Proprietary"
     CUSTOM = "Custom"
 
