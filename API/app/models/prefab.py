@@ -42,6 +42,11 @@ class LinkType(str, Enum):
     GITHUB = "Github"
     GITLAB = "Gitlab"
 
+class Licencing(str, Enum):
+    OPENSOURCE = "Open Source",
+    PROPRIETARY = "Proprietary"
+    CUSTOM = "Custom"
+
 class ExternalLink(BaseModel):
     type: LinkType = Field(...)
     url: HttpUrl = Field(...)
@@ -64,6 +69,8 @@ class UserCreatedPrefab(BaseModel):
     categories: List[Categories] = Field(...)
     external_links: List[ExternalLink] = Field(...)
 
+    licence_type: Licencing = Field(...)
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -83,7 +90,8 @@ class UserCreatedPrefab(BaseModel):
                         "type": "Github",
                         "url": "https://github.com/Dyslex1k/VRC-Skeletal-Hands"
                     }  
-                ]
+                ],
+                "licence_type": "Open Source"
             }
         },
     )
@@ -125,10 +133,28 @@ class Prefab(UserCreatedPrefab):
         json_encoders={ObjectId: str},
         json_schema_extra={
             "example": {
-                "name": "Jane Doe",
-                "email": "jdoe@example.com",
-                "course": "Experiments, Science, and Fashion in anophotonics",
-                "gpa": 3.0,
+                "_id": "6968fc1d15ac634a16ff0e0b",
+                "name": "VRC-Skeletal-Hands",
+                "description": "A OSC app that is used to add full skeletal hand tracking to your avatar",
+                "content": "# OSC app that is used for data that is really cool\nThis is a cool little project I have",
+                "creator_id": "6968fc1d15ac634a16ff0e0b",
+                "use_cases": [
+                    "Avatars",
+                    "Osc"
+                ],
+                "categories": [
+                    "Animations",
+                    "Tooling"
+                ],
+                "external_links": [
+                    {
+                        "type": "Github",
+                        "url": "https://github.com/Dyslex1k/VRC-Skeletal-Hands"
+                    }  
+                ],
+                "created_at": "2026-01-15 14:39:59.320564",
+                "updated_at": None
+
             }
         },
     )
